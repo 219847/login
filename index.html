@@ -16,45 +16,83 @@
 
   <p id="message"></p>
   <p id="userInfo"></p>
+  <div id="usernameSection" style="display:none;">
+  <input id="usernameInput" type="text" placeholder="Set a username">
+  <button onclick="setUsername()">Save Username</button>
+</div>
+
 <script>
   const SUPABASE_URL = "https://fjkvbkspjcvfdnlxajty.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_NZscoctqsHq6AInmQIDFdQ_gYvNed5d";
 
   const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  async function login() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const msg = document.getElementById("message");
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("message");
 
-    // Login
-    const { data, error } = await client.auth.signInWithPassword({
-      email,
-      password
-    });
+  const { data, error } = await client.auth.signInWithPassword({
+    email,
+    password
+  });
 
-    if (error) {
-      msg.textContent = "Login failed: " + error.message;
-      msg.style.color = "red";
-      return;
-    }
-
-    // ⭐ STEP 3: Fetch balance
-    const { data: sessionData } = await client.auth.getSession();
-    const user = sessionData.session.user;
-
-    const { data: balanceRow } = await client
-      .from("user_balance")
-      .select("balance")
-      .eq("user_id", user.id)
-      .single();
-
-    msg.textContent = "Login successful! Balance: " + balanceRow.balance;
-    msg.style.color = "green";
-
-    // Optional redirect
-    // window.location.href = "/dashboard.html";
+  if (error) {
+    msg.textContent = "Login failed: " + error.message;
+    msg.style.color = "red";
+    return;
   }
+
+  // Get user
+  const { data: sessionData } = await client.auth.getSession();
+  const user = sessionData.session.user;
+
+  // Fetch balance + username
+  const { data: balanceRow } = await client
+    .from("user_balance")
+    .select("balance, username")
+    .eq("user_id", user.id)
+    .single();
+
+  msg.textContent = "Login successful! Balance: " + balanceRow.balance;
+  msg.style.color = "green";
+
+  const usernameSection = document.getElementById("usernameSection");
+  const userInfo = document.getElementById("userInfo");
+
+  if (balanceRow.username) {
+    userInfo.textContent = "Logged in as: " + balanceRow.username;
+    usernameSection.style.display = "none";
+  } else {
+    userInfo.textContent = "Logged in as: " + user.email;
+    usernameSection.style.display = "block";
+  }
+}
+async function setUsername() {
+  const newUsername = document.getElementById("usernameInput").value.trim();
+  if (!newUsername) return;
+
+  const { data: sessionData } = await client.auth.getSession();
+  const user = sessionData.session.user;
+
+  // Update username in user_balance
+  const { error } = await client
+    .from("user_balance")
+    .update({ username: newUsername })
+    .eq("user_id", user.id);
+
+  if (error) {
+    alert("Failed to set username: " + error.message);
+    return;
+  }
+
+  alert("Username set!");
+
+  // Refresh UI
+  document.getElementById("usernameSection").style.display = "none";
+  document.getElementById("userInfo").textContent = "Logged in as: " + newUsername;
+}
+
 
   document.getElementById("loginBtn").addEventListener("click", login);
 </script>
