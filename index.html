@@ -27,6 +27,7 @@
     const password = document.getElementById("password").value;
     const msg = document.getElementById("message");
 
+    // Login
     const { data, error } = await client.auth.signInWithPassword({
       email,
       password
@@ -38,11 +39,21 @@
       return;
     }
 
-    msg.textContent = "Login successful!";
+    // ⭐ STEP 3: Fetch balance
+    const { data: sessionData } = await client.auth.getSession();
+    const user = sessionData.session.user;
+
+    const { data: balanceRow } = await client
+      .from("user_balance")
+      .select("balance")
+      .eq("user_id", user.id)
+      .single();
+
+    msg.textContent = "Login successful! Balance: " + balanceRow.balance;
     msg.style.color = "green";
 
-    // Example redirect after login
-    window.location.href = "/dashboard.html";
+    // Optional redirect
+    // window.location.href = "/dashboard.html";
   }
 
   document.getElementById("loginBtn").addEventListener("click", login);
